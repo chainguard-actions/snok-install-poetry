@@ -1,0 +1,30 @@
+name: Test Poetry plugin installation
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          version: "1.8.0"
+          plugins: "poetry-plugin-export"
+      - name: Assert Poetry is installed
+        run: |
+          echo "Checking poetry is available..."
+          if ! command -v poetry &>/dev/null; then
+            echo "FAIL: poetry command not found"
+            exit 1
+          fi
+          echo "PASS: poetry is installed"
+          poetry --version
+      - name: Assert plugin is installed
+        run: |
+          echo "Checking poetry-plugin-export is installed..."
+          if ! poetry self show plugins 2>/dev/null | grep -q "poetry-plugin-export"; then
+            echo "FAIL: poetry-plugin-export plugin not found"
+            exit 1
+          fi
+          echo "PASS: poetry-plugin-export plugin is installed"
