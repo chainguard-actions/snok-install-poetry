@@ -1,0 +1,35 @@
+name: Test Poetry installation with installation-arguments
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          version: latest
+          installation-arguments: "--force"
+          virtualenvs-create: "true"
+          virtualenvs-in-project: "true"
+          installer-parallel: "false"
+      - name: Assert Poetry is installed
+        run: |
+          echo "Checking poetry is available after install with --force..."
+          if ! command -v poetry &> /dev/null; then
+            echo "FAIL: poetry command not found"
+            exit 1
+          fi
+          echo "PASS: poetry is installed"
+          poetry --version
+      - name: Assert virtualenvs-in-project config
+        run: |
+          echo "Checking virtualenvs.in-project config..."
+          CONFIG=$(poetry config virtualenvs.in-project)
+          echo "actual: $CONFIG"
+          if [ "$CONFIG" != "true" ]; then
+            echo "FAIL: expected virtualenvs.in-project=true, got: $CONFIG"
+            exit 1
+          fi
+          echo "PASS: virtualenvs.in-project is true"
