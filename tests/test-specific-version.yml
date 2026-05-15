@@ -1,0 +1,22 @@
+name: Test specific Poetry version installation
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          version: "1.8.0"
+      - name: Assert Poetry version matches
+        run: |
+          echo "Checking poetry version..."
+          INSTALLED_VERSION=$(poetry --version 2>&1 | grep -oP '\d+\.\d+\.\d+')
+          echo "actual: $INSTALLED_VERSION"
+          if [ "$INSTALLED_VERSION" != "1.8.0" ]; then
+            echo "FAIL: expected version '1.8.0', got '$INSTALLED_VERSION'"
+            exit 1
+          fi
+          echo "PASS: poetry version is 1.8.0"
