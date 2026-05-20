@@ -1,7 +1,0 @@
-{
-  "owner": "snok",
-  "name": "install-poetry",
-  "visibility": "internal",
-  "description": "Installs and configures Poetry",
-  "block_publish": false
-}
