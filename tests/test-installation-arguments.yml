@@ -13,15 +13,15 @@ jobs:
           installation-arguments: "--force"
       - name: Assert Poetry is installed with force argument
         run: |
-          echo "Checking poetry is available after --force install..."
-          if ! command -v poetry &>/dev/null; then
+          echo "Checking Poetry installation with --force argument..."
+          if ! command -v poetry &> /dev/null; then
             echo "FAIL: poetry command not found"
             exit 1
           fi
           POETRY_VERSION=$(poetry --version)
           echo "actual: $POETRY_VERSION"
           if [[ "$POETRY_VERSION" != *"1.8.3"* ]]; then
-            echo "FAIL: expected poetry version 1.8.3, got: $POETRY_VERSION"
+            echo "FAIL: expected Poetry 1.8.3, got: $POETRY_VERSION"
             exit 1
           fi
           echo "PASS"

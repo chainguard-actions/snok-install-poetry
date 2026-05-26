@@ -11,24 +11,24 @@ jobs:
         with:
           version: "1.8.3"
           plugins: "poetry-plugin-export"
-      - name: Assert Poetry is installed and plugin is present
+      - name: Assert Poetry is installed and plugin is available
         run: |
-          echo "Checking poetry is available..."
-          if ! command -v poetry &>/dev/null; then
+          echo "Checking Poetry installation with plugin..."
+          if ! command -v poetry &> /dev/null; then
             echo "FAIL: poetry command not found"
             exit 1
           fi
           POETRY_VERSION=$(poetry --version)
           echo "actual: $POETRY_VERSION"
           if [[ "$POETRY_VERSION" != *"1.8.3"* ]]; then
-            echo "FAIL: expected poetry version 1.8.3, got: $POETRY_VERSION"
+            echo "FAIL: expected Poetry 1.8.3, got: $POETRY_VERSION"
             exit 1
           fi
-          echo "Checking poetry-plugin-export is installed..."
-          PLUGINS=$(poetry self show plugins 2>&1 || true)
-          echo "plugins output: $PLUGINS"
+          echo "Checking that poetry-plugin-export is installed..."
+          PLUGINS=$(poetry self show plugins 2>&1)
+          echo "plugins: $PLUGINS"
           if [[ "$PLUGINS" != *"poetry-plugin-export"* ]]; then
-            echo "FAIL: poetry-plugin-export not found in plugins list"
+            echo "FAIL: poetry-plugin-export not found in installed plugins"
             exit 1
           fi
           echo "PASS"
