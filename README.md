@@ -12,7 +12,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | v1.3.3 | [`v1.3.3`](https://github.com/chainguard-actions/snok-install-poetry/tree/v1.3.3) | — |
 | v1.3.4 | [`v1.3.4`](https://github.com/chainguard-actions/snok-install-poetry/tree/v1.3.4) | — |
 | v1.4.0 | [`v1.4.0`](https://github.com/chainguard-actions/snok-install-poetry/tree/v1.4.0) | — |
-| v1.4.1 | [`v1.4.1`](https://github.com/chainguard-actions/snok-install-poetry/tree/v1.4.1) | — |
+| v1.4.1 | [`v1.4.1`](https://github.com/chainguard-actions/snok-install-poetry/tree/v1.4.1) | [`76e04a9`](https://github.com/snok/install-poetry/commit/76e04a911780d5b312d89783f7b1cd627778900a) |
 
 ## Privacy
 
