@@ -1,4 +1,4 @@
-name: Test installation-arguments input
+name: Test Poetry installation with installation-arguments
 on:
   workflow_dispatch:
 jobs:
@@ -11,17 +11,17 @@ jobs:
         with:
           version: "1.8.3"
           installation-arguments: "--force"
-      - name: Assert poetry is installed with force argument
+      - name: Assert Poetry is installed
         run: |
-          echo "Checking poetry installation after --force install..."
+          echo "Checking poetry is available after install with --force..."
           if ! command -v poetry &> /dev/null; then
             echo "FAIL: poetry command not found"
             exit 1
           fi
-          POETRY_VERSION=$(poetry --version)
-          echo "actual: $POETRY_VERSION"
-          if [[ "$POETRY_VERSION" != *"1.8.3"* ]]; then
-            echo "FAIL: expected poetry version 1.8.3, got: $POETRY_VERSION"
+          VERSION=$(poetry --version)
+          echo "actual: $VERSION"
+          if ! echo "$VERSION" | grep -q "1.8.3"; then
+            echo "FAIL: expected poetry version 1.8.3, got: $VERSION"
             exit 1
           fi
           echo "PASS"
