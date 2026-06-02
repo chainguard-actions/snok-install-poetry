@@ -10,23 +10,17 @@ jobs:
         uses: .
         with:
           version: "1.8.3"
-          virtualenvs-create: "true"
-          virtualenvs-in-project: "false"
-          installer-parallel: "true"
       - name: Assert Poetry is installed
         run: |
           echo "Checking poetry is available..."
-          if ! command -v poetry &> /dev/null; then
+          if ! command -v poetry &>/dev/null; then
             echo "FAIL: poetry command not found"
             exit 1
           fi
-          echo "PASS: poetry is installed"
-      - name: Assert Poetry version
-        run: |
-          VERSION=$(poetry --version 2>&1)
-          echo "actual: $VERSION"
-          if ! echo "$VERSION" | grep -q "1.8.3"; then
-            echo "FAIL: expected poetry version 1.8.3, got: $VERSION"
+          POETRY_VERSION=$(poetry --version)
+          echo "Poetry version: $POETRY_VERSION"
+          if [[ "$POETRY_VERSION" != *"1.8.3"* ]]; then
+            echo "FAIL: expected version 1.8.3, got: $POETRY_VERSION"
             exit 1
           fi
           echo "PASS"
