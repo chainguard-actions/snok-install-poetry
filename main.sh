@@ -22,16 +22,16 @@ fi
 echo -e "\n${YELLOW}Setting Poetry installation path as $INSTALL_PATH${RESET}\n"
 echo -e "${YELLOW}Installing Poetry 👷${RESET}\n"
 
+read -ra installation_args <<< "$INSTALLATION_ARGUMENTS"
+
 if [ "$VERSION" == "latest" ]; then
-  # Note: If we quote installation arguments, the call below fails
-  # shellcheck disable=SC2086
-  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes $INSTALLATION_ARGUMENTS
+  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes "${installation_args[@]}"
 else
-  # shellcheck disable=SC2086
-  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes --version="$VERSION" $INSTALLATION_ARGUMENTS
+  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes --version="$VERSION" "${installation_args[@]}"
 fi
 
-echo "$INSTALL_PATH/bin" >>"$GITHUB_PATH"
+safe=$(printf '%s' "$INSTALL_PATH/bin" | tr -d '\n\r')
+echo "$safe" >> "$GITHUB_PATH"
 export PATH="$INSTALL_PATH/bin:$PATH"
 
 # Expand any "~" in VIRTUALENVS_PATH
@@ -43,10 +43,12 @@ poetry config virtualenvs.path "$VIRTUALENVS_PATH"
 
 # Parse plugin array from string, handle whitespace or newline delimiters
 if ! [ -z "$POETRY_PLUGINS" ]; then
-  plugins="$(echo $POETRY_PLUGINS | tr -s ' ')" # Replace linesep to space
-  if [[ "$plugins" && "$plugins" != " " ]]; then
-    echo "Installing plugins: ${plugins}"
-    poetry self add ${plugins} || exit 1
+  # Normalize whitespace/newlines to spaces, then split into array
+  normalized_plugins="$(printf '%s' "$POETRY_PLUGINS" | tr -s '[:space:]' ' ' | sed 's/^ //;s/ $//')"
+  read -ra plugins <<< "$normalized_plugins"
+  if [[ "${#plugins[@]}" -gt 0 ]]; then
+    echo "Installing plugins: ${plugins[*]}"
+    poetry self add "${plugins[@]}" || exit 1
   fi
 fi
 

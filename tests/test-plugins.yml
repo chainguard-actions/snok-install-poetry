@@ -22,10 +22,10 @@ jobs:
       - name: Assert plugin is installed
         run: |
           echo "Checking poetry-plugin-export is installed..."
-          PLUGINS=$(poetry self show plugins 2>&1 || true)
+          PLUGINS=$(poetry self show plugins 2>&1)
           echo "plugins output: $PLUGINS"
           if ! echo "$PLUGINS" | grep -q "poetry-plugin-export"; then
-            echo "FAIL: poetry-plugin-export not found in installed plugins"
+            echo "FAIL: poetry-plugin-export plugin not found in: $PLUGINS"
             exit 1
           fi
           echo "PASS: poetry-plugin-export is installed"

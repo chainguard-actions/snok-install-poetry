@@ -23,7 +23,7 @@ jobs:
           echo "PASS: poetry is installed"
       - name: Assert Poetry version
         run: |
-          VERSION=$(poetry --version)
+          VERSION=$(poetry --version 2>&1)
           echo "actual: $VERSION"
           if ! echo "$VERSION" | grep -q "1.8.3"; then
             echo "FAIL: expected poetry version 1.8.3, got: $VERSION"
