@@ -1,4 +1,4 @@
-name: Test basic Poetry installation
+name: Test basic usage
 on:
   workflow_dispatch:
 jobs:
@@ -10,17 +10,20 @@ jobs:
         uses: .
         with:
           version: "1.8.3"
-      - name: Assert Poetry is installed
+          virtualenvs-create: "true"
+          virtualenvs-in-project: "false"
+          installer-parallel: "true"
+      - name: Assert poetry is installed
         run: |
-          echo "Checking poetry is available..."
-          if ! command -v poetry &>/dev/null; then
+          echo "Checking poetry installation..."
+          if ! command -v poetry &> /dev/null; then
             echo "FAIL: poetry command not found"
             exit 1
           fi
           POETRY_VERSION=$(poetry --version)
-          echo "Poetry version: $POETRY_VERSION"
+          echo "actual: $POETRY_VERSION"
           if [[ "$POETRY_VERSION" != *"1.8.3"* ]]; then
-            echo "FAIL: expected version 1.8.3, got: $POETRY_VERSION"
+            echo "FAIL: expected poetry version 1.8.3, got: $POETRY_VERSION"
             exit 1
           fi
           echo "PASS"

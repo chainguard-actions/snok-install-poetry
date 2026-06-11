@@ -25,15 +25,17 @@ echo -e "\n${YELLOW}Setting Poetry installation path as $INSTALL_PATH${RESET}\n"
 echo -e "${YELLOW}Installing Poetry 👷${RESET}\n"
 
 if [ "$VERSION" == "latest" ]; then
-  # Note: If we quote installation arguments, the call below fails
-  # shellcheck disable=SC2086
-  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes $INSTALLATION_ARGUMENTS
+  # Split INSTALLATION_ARGUMENTS into an array to avoid unquoted word-splitting
+  read -ra installation_args <<< "$INSTALLATION_ARGUMENTS"
+  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes "${installation_args[@]}"
 else
-  # shellcheck disable=SC2086
-  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes --version="$VERSION" $INSTALLATION_ARGUMENTS
+  read -ra installation_args <<< "$INSTALLATION_ARGUMENTS"
+  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes --version="$VERSION" "${installation_args[@]}"
 fi
 
-echo "$INSTALL_PATH/bin" >>"$GITHUB_PATH"
+# Sanitize INSTALL_PATH to prevent newline injection into GITHUB_PATH
+safe_install_path="$(printf '%s' "$INSTALL_PATH" | tr -d '\n\r')"
+echo "${safe_install_path}/bin" >>"$GITHUB_PATH"
 export PATH="$INSTALL_PATH/bin:$PATH"
 
 # Expand any "~" in VIRTUALENVS_PATH
@@ -48,7 +50,8 @@ if [ -n "$POETRY_PLUGINS" ]; then
   plugins="$(echo "$POETRY_PLUGINS" | tr -s ' ')" # Replace linesep to space
   if [[ "$plugins" && "$plugins" != " " ]]; then
     echo "Installing plugins: ${plugins}"
-    poetry self add ${plugins} || exit 1
+    read -ra plugin_args <<< "$plugins"
+    poetry self add "${plugin_args[@]}" || exit 1
   fi
 fi
 
