@@ -24,16 +24,14 @@ download_script "$INSTALLER_URL" >"$INSTALLATION_SCRIPT"
 echo -e "\n${YELLOW}Setting Poetry installation path as $INSTALL_PATH${RESET}\n"
 echo -e "${YELLOW}Installing Poetry 👷${RESET}\n"
 
+read -ra installation_args <<< "$INSTALLATION_ARGUMENTS"
+
 if [ "$VERSION" == "latest" ]; then
-  # Split INSTALLATION_ARGUMENTS into an array to avoid unquoted word-splitting
-  read -ra installation_args <<< "$INSTALLATION_ARGUMENTS"
   POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes "${installation_args[@]}"
 else
-  read -ra installation_args <<< "$INSTALLATION_ARGUMENTS"
   POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes --version="$VERSION" "${installation_args[@]}"
 fi
 
-# Sanitize INSTALL_PATH to prevent newline injection into GITHUB_PATH
 safe_install_path="$(printf '%s' "$INSTALL_PATH" | tr -d '\n\r')"
 echo "${safe_install_path}/bin" >>"$GITHUB_PATH"
 export PATH="$INSTALL_PATH/bin:$PATH"

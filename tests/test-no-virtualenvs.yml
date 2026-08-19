@@ -1,0 +1,30 @@
+name: Test Poetry with virtualenvs disabled
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: install-poetry
+        name: Install Poetry with virtualenvs disabled
+        uses: .
+        with:
+          version: latest
+          virtualenvs-create: "false"
+      - name: Assert poetry is on PATH
+        run: |
+          if ! which poetry; then
+            echo "FAIL: poetry not found on PATH"
+            exit 1
+          fi
+          echo "PASS: poetry found on PATH"
+      - name: Assert virtualenvs.create is false
+        run: |
+          CONFIG="$(poetry config virtualenvs.create)"
+          echo "actual virtualenvs.create: $CONFIG"
+          if [ "$CONFIG" != "false" ]; then
+            echo "FAIL: expected virtualenvs.create=false, got: $CONFIG"
+            exit 1
+          fi
+          echo "PASS: virtualenvs.create is false"

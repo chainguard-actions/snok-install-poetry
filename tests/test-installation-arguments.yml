@@ -6,22 +6,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - id: action
+      - name: Install Poetry with installation-arguments
+        id: action
         uses: .
         with:
-          version: "1.8.3"
-          installation-arguments: "--force"
-      - name: Assert poetry is installed with force argument
+          version: latest
+          installation-arguments: --force
+      - name: Assert Poetry is installed
         run: |
-          echo "Checking poetry installation after --force install..."
-          if ! command -v poetry &> /dev/null; then
-            echo "FAIL: poetry command not found"
+          if ! command -v poetry &>/dev/null; then
+            echo "FAIL: poetry not found on PATH"
             exit 1
           fi
-          POETRY_VERSION=$(poetry --version)
-          echo "actual: $POETRY_VERSION"
-          if [[ "$POETRY_VERSION" != *"1.8.3"* ]]; then
-            echo "FAIL: expected poetry version 1.8.3, got: $POETRY_VERSION"
-            exit 1
-          fi
-          echo "PASS"
+          echo "PASS: poetry is installed"
+          poetry --version

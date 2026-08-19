@@ -1,0 +1,29 @@
+name: Test specific Poetry version installation
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: install-poetry
+        name: Install Poetry (specific version)
+        uses: .
+        with:
+          version: "1.8.3"
+      - name: Assert poetry is on PATH
+        run: |
+          if ! which poetry; then
+            echo "FAIL: poetry not found on PATH"
+            exit 1
+          fi
+          echo "PASS: poetry found on PATH"
+      - name: Assert correct Poetry version is installed
+        run: |
+          POETRY_VERSION="$(poetry --version)"
+          echo "actual: $POETRY_VERSION"
+          if ! echo "$POETRY_VERSION" | grep -q "1.8.3"; then
+            echo "FAIL: expected Poetry 1.8.3, got: $POETRY_VERSION"
+            exit 1
+          fi
+          echo "PASS: correct version installed: $POETRY_VERSION"

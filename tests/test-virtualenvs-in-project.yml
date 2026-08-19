@@ -1,0 +1,39 @@
+name: Test Poetry virtualenvs-in-project configuration
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: install-poetry
+        name: Install Poetry with virtualenvs-in-project enabled
+        uses: .
+        with:
+          version: latest
+          virtualenvs-in-project: "true"
+      - name: Assert poetry is on PATH
+        run: |
+          if ! which poetry; then
+            echo "FAIL: poetry not found on PATH"
+            exit 1
+          fi
+          echo "PASS: poetry found on PATH"
+      - name: Assert virtualenvs.in-project is true
+        run: |
+          CONFIG="$(poetry config virtualenvs.in-project)"
+          echo "actual virtualenvs.in-project: $CONFIG"
+          if [ "$CONFIG" != "true" ]; then
+            echo "FAIL: expected virtualenvs.in-project=true, got: $CONFIG"
+            exit 1
+          fi
+          echo "PASS: virtualenvs.in-project is true"
+      - name: Assert virtualenvs.create is still true (default)
+        run: |
+          CONFIG="$(poetry config virtualenvs.create)"
+          echo "actual virtualenvs.create: $CONFIG"
+          if [ "$CONFIG" != "true" ]; then
+            echo "FAIL: expected virtualenvs.create=true, got: $CONFIG"
+            exit 1
+          fi
+          echo "PASS: virtualenvs.create is true"

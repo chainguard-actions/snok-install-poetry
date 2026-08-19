@@ -1,4 +1,4 @@
-name: Test basic usage
+name: Test basic Poetry installation (latest)
 on:
   workflow_dispatch:
 jobs:
@@ -6,24 +6,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - id: action
+      - id: install-poetry
+        name: Install Poetry (latest)
         uses: .
         with:
-          version: "1.8.3"
-          virtualenvs-create: "true"
-          virtualenvs-in-project: "false"
-          installer-parallel: "true"
-      - name: Assert poetry is installed
+          version: latest
+      - name: Assert poetry is on PATH
         run: |
-          echo "Checking poetry installation..."
-          if ! command -v poetry &> /dev/null; then
-            echo "FAIL: poetry command not found"
+          which poetry
+          if ! which poetry; then
+            echo "FAIL: poetry not found on PATH"
             exit 1
           fi
-          POETRY_VERSION=$(poetry --version)
+          echo "PASS: poetry found on PATH"
+      - name: Assert poetry version command works
+        run: |
+          POETRY_VERSION="$(poetry --version)"
           echo "actual: $POETRY_VERSION"
-          if [[ "$POETRY_VERSION" != *"1.8.3"* ]]; then
-            echo "FAIL: expected poetry version 1.8.3, got: $POETRY_VERSION"
+          if [ -z "$POETRY_VERSION" ]; then
+            echo "FAIL: poetry --version returned empty"
+            exit 1
+          fi
+          echo "PASS: poetry version: $POETRY_VERSION"
+      - name: Assert default virtualenvs.create is true
+        run: |
+          CONFIG="$(poetry config virtualenvs.create)"
+          echo "actual virtualenvs.create: $CONFIG"
+          if [ "$CONFIG" != "true" ]; then
+            echo "FAIL: expected virtualenvs.create=true, got: $CONFIG"
+            exit 1
+          fi
+          echo "PASS"
+      - name: Assert default virtualenvs.in-project is false
+        run: |
+          CONFIG="$(poetry config virtualenvs.in-project)"
+          echo "actual virtualenvs.in-project: $CONFIG"
+          if [ "$CONFIG" != "false" ]; then
+            echo "FAIL: expected virtualenvs.in-project=false, got: $CONFIG"
             exit 1
           fi
           echo "PASS"
