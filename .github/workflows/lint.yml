@@ -1,0 +1,22 @@
+name: lint
+
+on: pull_request
+
+permissions: {}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3
+      - uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # v4
+        with:
+          python-version: "3.x"
+      - run: pip install pre-commit
+      - uses: actions/cache@6f8efc29b200d32929f49075959781ed54ec270c # v3
+        id: pre-commit-cache
+        with:
+          path: ~/.cache/pre-commit
+          key: key-0
+      - uses: mfinelli/setup-shfmt@8ec8aa2cfd83a7d20a6fb746c638aae1bc181ce9 # v2
+      - run: pre-commit run --all-files
