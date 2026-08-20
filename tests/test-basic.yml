@@ -1,4 +1,4 @@
-name: Test basic Poetry installation
+name: Test basic Poetry installation (latest)
 on:
   workflow_dispatch:
 jobs:
@@ -6,34 +6,48 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - id: action
+
+      - id: install-poetry
+        name: Install Poetry (latest)
         uses: .
         with:
           version: latest
-      - name: Assert Poetry is installed
+
+      - name: Assert Poetry is on PATH and executable
         run: |
-          echo "Checking poetry is available..."
+          echo "Checking poetry binary..."
           if ! command -v poetry &>/dev/null; then
-            echo "FAIL: poetry command not found"
+            echo "FAIL: poetry not found on PATH"
             exit 1
           fi
-          echo "PASS: poetry is installed"
-          poetry --version
-      - name: Assert virtualenvs.create is true by default
+          echo "PASS: poetry found at $(command -v poetry)"
+
+      - name: Assert Poetry version output is non-empty
         run: |
-          config="$(poetry config virtualenvs.create)"
-          echo "virtualenvs.create: $config"
-          if [ "$config" != "true" ]; then
-            echo "FAIL: expected virtualenvs.create=true, got $config"
+          VERSION_OUTPUT="$(poetry --version)"
+          echo "poetry version: $VERSION_OUTPUT"
+          if [ -z "$VERSION_OUTPUT" ]; then
+            echo "FAIL: poetry --version returned empty output"
+            exit 1
+          fi
+          echo "PASS: $VERSION_OUTPUT"
+
+      - name: Assert Poetry config virtualenvs.create is true (default)
+        run: |
+          CONFIG="$(poetry config virtualenvs.create)"
+          echo "virtualenvs.create: $CONFIG"
+          if [ "$CONFIG" != "true" ]; then
+            echo "FAIL: expected virtualenvs.create=true, got '$CONFIG'"
             exit 1
           fi
           echo "PASS"
-      - name: Assert virtualenvs.in-project is false by default
+
+      - name: Assert Poetry config virtualenvs.in-project is false (default)
         run: |
-          config="$(poetry config virtualenvs.in-project)"
-          echo "virtualenvs.in-project: $config"
-          if [ "$config" != "false" ]; then
-            echo "FAIL: expected virtualenvs.in-project=false, got $config"
+          CONFIG="$(poetry config virtualenvs.in-project)"
+          echo "virtualenvs.in-project: $CONFIG"
+          if [ "$CONFIG" != "false" ]; then
+            echo "FAIL: expected virtualenvs.in-project=false, got '$CONFIG'"
             exit 1
           fi
           echo "PASS"

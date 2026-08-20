@@ -1,0 +1,155 @@
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # Make sure the action works using the default settings
+  test-install:
+    name: default ${{ matrix.poetry-version }} ${{ matrix.os }} ${{ matrix.python-version }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+        python-version: [ "3.8", "3.9", "3.10", "3.11", "3.12" ]
+        poetry-version: [ "1.6.1", "1.7.1", "1.8.1" ]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./
+        with:
+          version: "${{ matrix.poetry-version }}"
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - run: |
+          poetry install --no-root --no-interaction
+          poetry install --no-interaction
+          poetry run pytest --version
+
+  # Make sure the action sets config options correctly
+  test-config-options:
+    name: non-standard config - ${{ matrix.os }} ${{ matrix.python-version }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+        python-version: [ "3.8", "3.9", "3.10", "3.11", "3.12" ]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - uses: ./
+        with:
+          version: 1.7.1
+          virtualenvs-create: false
+          virtualenvs-in-project: true
+          virtualenvs-path: ~/.cache/test
+          installer-parallel: false
+      - run: |
+          source .github/scripts/assert.sh
+          assert_in  "1.7.1" "$(poetry --version)"
+          assert_in  "false" "$(poetry config virtualenvs.create)"
+          assert_in  "true"  "$(poetry config virtualenvs.in-project)"
+          assert_in  "test"  "$(poetry config virtualenvs.path)"
+          assert_in  "false" "$(poetry config installer.parallel)"
+
+  # Check that installation-arguments works
+  test-installation-arguments:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./
+        with:
+          installation-arguments: --git https://github.com/python-poetry/poetry.git@69bd6820e320f84900103fdf867e24b355d6aa5d
+      - run: |
+          source .github/scripts/assert.sh
+          assert_in "1.1.9" "$(poetry --version)"
+
+  # Check that plugins installing works
+  test-plugin-installation:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./
+        with:
+          plugins: poetry-plugin-bundle
+      - run: |
+          source .github/scripts/assert.sh
+          assert_in "poetry-plugin-bundle" "$(poetry self show plugins)"
+
+  test-plugins-whitespace-delimited:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./
+        with:
+          plugins: |
+            poetry-plugin-bundle
+            poetry-plugin-export
+      - run: |
+          source .github/scripts/assert.sh
+          assert_in "poetry-plugin-bundle" "$(poetry self show plugins)"
+          assert_in "poetry-plugin-export" "$(poetry self show plugins)"
+
+  # Retrieve the latest poetry version from PyPI
+  check-latest:
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      latest-poetry-version: ${{ steps.fetch.outputs.version }}
+    steps:
+      - name: Fetch the latest Poetry version from PyPI
+        id: fetch
+        run: |
+          curl -sf 'https://pypi.org/pypi/poetry/json' \
+            | jq -r '"version=" + .info.version' \
+            >> $GITHUB_OUTPUT
+
+  # Make sure the action installs the latest version by default
+  test-latest-version-when-unspecified:
+    needs: check-latest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./
+      - name: Verify installed version matches latest
+        env:
+          LATEST_POETRY_VERSION: ${{ needs.check-latest.outputs.latest-poetry-version }}
+        run: |
+          source .github/scripts/assert.sh
+          assert_in "." "$LATEST_POETRY_VERSION"
+          assert_in "$LATEST_POETRY_VERSION" "$(poetry --version)"
+
+  # Make sure we're able to run the action with both major and minor versions
+  test-major-and-minor-versions:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: snok/install-poetry@a783c322200f0519c7926aa6faa857c4e23e9263 # v1
+      - uses: snok/install-poetry@44d50c1274bf7fe0860f5c0531e36c9092c15b23 # v1.2
+      - uses: snok/install-poetry@93ada01c735cc8a383ce0ce2ae205a21c415379b # v1.3

@@ -22,16 +22,20 @@ fi
 echo -e "\n${YELLOW}Setting Poetry installation path as $INSTALL_PATH${RESET}\n"
 echo -e "${YELLOW}Installing Poetry 👷${RESET}\n"
 
-if [ "$VERSION" == "latest" ]; then
-  # Note: If we quote installation arguments, the call below fails
-  # shellcheck disable=SC2086
-  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes $INSTALLATION_ARGUMENTS
-else
-  # shellcheck disable=SC2086
-  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes --version="$VERSION" $INSTALLATION_ARGUMENTS
+install_args=()
+if [ -n "$INSTALLATION_ARGUMENTS" ]; then
+  while IFS= read -r -d '' t; do install_args+=("$t"); done \
+    < <(printf '%s' "$INSTALLATION_ARGUMENTS" | xargs printf '%s\0')
 fi
 
-echo "$INSTALL_PATH/bin" >>"$GITHUB_PATH"
+if [ "$VERSION" == "latest" ]; then
+  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes "${install_args[@]}"
+else
+  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes --version="$VERSION" "${install_args[@]}"
+fi
+
+safe_install_path="$(printf '%s' "$INSTALL_PATH/bin" | tr -d '\n\r')"
+echo "$safe_install_path" >>"$GITHUB_PATH"
 export PATH="$INSTALL_PATH/bin:$PATH"
 
 # Expand any "~" in VIRTUALENVS_PATH
@@ -42,11 +46,13 @@ poetry config virtualenvs.in-project "$VIRTUALENVS_IN_PROJECT"
 poetry config virtualenvs.path "$VIRTUALENVS_PATH"
 
 # Parse plugin array from string, handle whitespace or newline delimiters
-if ! [ -z "$POETRY_PLUGINS" ]; then
-  plugins="$(echo $POETRY_PLUGINS | tr -s ' ')" # Replace linesep to space
-  if [[ "$plugins" && "$plugins" != " " ]]; then
-    echo "Installing plugins: ${plugins}"
-    poetry self add ${plugins} || exit 1
+if [ -n "$POETRY_PLUGINS" ]; then
+  plugins=()
+  while IFS= read -r -d '' t; do plugins+=("$t"); done \
+    < <(printf '%s' "$POETRY_PLUGINS" | xargs printf '%s\0')
+  if [ "${#plugins[@]}" -gt 0 ]; then
+    echo "Installing plugins: ${plugins[*]}"
+    poetry self add "${plugins[@]}" || exit 1
   fi
 fi
 

@@ -6,16 +6,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - id: action
+
+      - id: install-poetry
+        name: Install Poetry (specific version 1.8.0)
         uses: .
         with:
           version: "1.8.0"
-      - name: Assert Poetry version matches
+
+      - name: Assert Poetry is on PATH
         run: |
-          installed="$(poetry --version)"
-          echo "installed: $installed"
-          if ! echo "$installed" | grep -q "1.8.0"; then
-            echo "FAIL: expected Poetry 1.8.0, got: $installed"
+          if ! command -v poetry &>/dev/null; then
+            echo "FAIL: poetry not found on PATH"
             exit 1
           fi
-          echo "PASS: correct version installed"
+          echo "PASS: poetry found at $(command -v poetry)"
+
+      - name: Assert correct Poetry version is installed
+        run: |
+          VERSION_OUTPUT="$(poetry --version)"
+          echo "poetry version output: $VERSION_OUTPUT"
+          if ! echo "$VERSION_OUTPUT" | grep -q "1.8.0"; then
+            echo "FAIL: expected version 1.8.0 in output, got: $VERSION_OUTPUT"
+            exit 1
+          fi
+          echo "PASS: correct version 1.8.0 installed"
