@@ -1,4 +1,4 @@
-name: Test specific Poetry version installation
+name: Test virtualenvs-create=false configuration
 on:
   workflow_dispatch:
 jobs:
@@ -8,10 +8,11 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - id: install
-        name: Install Poetry 1.8.0
+        name: Install Poetry with virtualenvs disabled
         uses: .
         with:
-          version: "1.8.0"
+          version: latest
+          virtualenvs-create: "false"
 
       - name: Assert Poetry is on PATH
         run: |
@@ -21,12 +22,12 @@ jobs:
           fi
           echo "PASS: poetry found at $(command -v poetry)"
 
-      - name: Assert Poetry version is 1.8.0
+      - name: Assert virtualenvs.create is false
         run: |
-          VERSION_OUTPUT="$(poetry --version)"
-          echo "poetry version output: $VERSION_OUTPUT"
-          if ! echo "$VERSION_OUTPUT" | grep -q "1.8.0"; then
-            echo "FAIL: expected version 1.8.0 in output, got: $VERSION_OUTPUT"
+          CONFIG="$(poetry config virtualenvs.create)"
+          echo "virtualenvs.create=$CONFIG"
+          if [ "$CONFIG" != "false" ]; then
+            echo "FAIL: expected virtualenvs.create=false, got '$CONFIG'"
             exit 1
           fi
-          echo "PASS: correct version installed"
+          echo "PASS"
