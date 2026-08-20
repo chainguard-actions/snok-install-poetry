@@ -1,4 +1,4 @@
-name: Test Poetry installation with plugins
+name: Test plugins input
 on:
   workflow_dispatch:
 jobs:
@@ -9,23 +9,20 @@ jobs:
       - id: action
         uses: .
         with:
-          version: "1.8.3"
+          version: "latest"
           plugins: "poetry-plugin-export"
       - name: Assert Poetry is installed
         run: |
-          echo "Checking poetry is available..."
-          if ! command -v poetry &> /dev/null; then
+          if ! command -v poetry &>/dev/null; then
             echo "FAIL: poetry command not found"
             exit 1
           fi
           echo "PASS: poetry is installed"
-      - name: Assert plugin is installed
+          poetry --version
+      - name: Assert poetry-plugin-export is installed
         run: |
-          echo "Checking poetry-plugin-export is installed..."
-          PLUGINS=$(poetry self show plugins 2>&1)
-          echo "plugins output: $PLUGINS"
-          if ! echo "$PLUGINS" | grep -q "poetry-plugin-export"; then
-            echo "FAIL: poetry-plugin-export plugin not found in: $PLUGINS"
+          if ! poetry self show plugins 2>/dev/null | grep -q "poetry-plugin-export"; then
+            echo "FAIL: poetry-plugin-export plugin not found"
             exit 1
           fi
-          echo "PASS: poetry-plugin-export is installed"
+          echo "PASS: poetry-plugin-export plugin is installed"

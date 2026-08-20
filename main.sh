@@ -22,16 +22,22 @@ fi
 echo -e "\n${YELLOW}Setting Poetry installation path as $INSTALL_PATH${RESET}\n"
 echo -e "${YELLOW}Installing Poetry 👷${RESET}\n"
 
-read -ra installation_args <<< "$INSTALLATION_ARGUMENTS"
-
-if [ "$VERSION" == "latest" ]; then
-  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes "${installation_args[@]}"
-else
-  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes --version="$VERSION" "${installation_args[@]}"
+# Tokenize INSTALLATION_ARGUMENTS into an array (quote-aware, handles flags safely)
+install_args=()
+if [ -n "$INSTALLATION_ARGUMENTS" ]; then
+  while IFS= read -r -d '' t; do install_args+=("$t"); done \
+    < <(printf '%s' "$INSTALLATION_ARGUMENTS" | xargs printf '%s\0')
 fi
 
-safe=$(printf '%s' "$INSTALL_PATH/bin" | tr -d '\n\r')
-echo "$safe" >> "$GITHUB_PATH"
+if [ "$VERSION" == "latest" ]; then
+  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes "${install_args[@]}"
+else
+  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes --version="$VERSION" "${install_args[@]}"
+fi
+
+# Sanitize INSTALL_PATH before writing to GITHUB_PATH to prevent newline injection
+safe_install_path="$(printf '%s' "$INSTALL_PATH" | tr -d '\n\r')"
+echo "${safe_install_path}/bin" >>"$GITHUB_PATH"
 export PATH="$INSTALL_PATH/bin:$PATH"
 
 # Expand any "~" in VIRTUALENVS_PATH
@@ -43,10 +49,13 @@ poetry config virtualenvs.path "$VIRTUALENVS_PATH"
 
 # Parse plugin array from string, handle whitespace or newline delimiters
 if ! [ -z "$POETRY_PLUGINS" ]; then
-  # Normalize whitespace/newlines to spaces, then split into array
-  normalized_plugins="$(printf '%s' "$POETRY_PLUGINS" | tr -s '[:space:]' ' ' | sed 's/^ //;s/ $//')"
-  read -ra plugins <<< "$normalized_plugins"
-  if [[ "${#plugins[@]}" -gt 0 ]]; then
+  # Tokenize POETRY_PLUGINS into an array (quote-aware, handles plugin names safely)
+  plugins=()
+  if [ -n "$POETRY_PLUGINS" ]; then
+    while IFS= read -r -d '' t; do plugins+=("$t"); done \
+      < <(printf '%s' "$POETRY_PLUGINS" | xargs printf '%s\0')
+  fi
+  if [ "${#plugins[@]}" -gt 0 ]; then
     echo "Installing plugins: ${plugins[*]}"
     poetry self add "${plugins[@]}" || exit 1
   fi

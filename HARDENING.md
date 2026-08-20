@@ -8,59 +8,130 @@
 
 **Test Policy SHA:** `843adf9e4b8f85d0c08b27b9d0b09dd094b54702`
 
-**Harden Agent Version:** `1`
+**Harden Agent Version:** `2`
 
-Action **snok--install-poetry/v1.4.1** was hardened automatically. 2 finding(s) were identified and resolved across 2 iteration(s).
+Action **snok--install-poetry/v1.4.1** was hardened automatically. 8 finding(s) were identified and resolved across 3 iteration(s).
 
 ## Findings Fixed
 
-### script-injection (severity: high)
+### unpinned-uses (severity: high)
 
-Rule (b) violation: `$INSTALLATION_ARGUMENTS` is expanded unquoted in two `python3` invocations in main.sh (lines 28 and 31). This env var is populated from `inputs.installation-arguments` (via the `env:` block in action.yml). Because the expansion is unquoted, the shell performs word-splitting and glob expansion on the value, allowing an attacker-controlled input containing metacharacters (`;`, `|`, `&`, `$(...)`) to inject arbitrary shell commands. The script even suppresses the shellcheck warning with `# shellcheck disable=SC2086`, confirming the unquoted expansion is intentional but unsafe.
-
-Offending lines:
-- Line 28: `POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes $INSTALLATION_ARGUMENTS`
-- Line 31: `POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes --version="$VERSION" $INSTALLATION_ARGUMENTS`
+All `uses:` references in lint.yml use mutable version tags instead of pinned 40-character SHA commits: `actions/checkout@v4` (line 9), `actions/setup-python@v5` (line 10), `actions/cache@v4` (line 14), `mfinelli/setup-shfmt@v3` (line 19). These are vulnerable to supply-chain attacks if the upstream tag is moved.
 
 Locations:
 
-- `main.sh:28`
-- `main.sh:31`
+- `.github/workflows/lint.yml:9`
+- `.github/workflows/lint.yml:10`
+- `.github/workflows/lint.yml:14`
+- `.github/workflows/lint.yml:19`
 
-### script-injection (severity: high)
+### unpinned-uses (severity: high)
 
-Rule (b) violation: `$POETRY_PLUGINS` is expanded unquoted on line 41 (`plugins="$(echo $POETRY_PLUGINS | tr -s ' ')"`) and the derived `${plugins}` variable is also expanded unquoted on line 44 (`poetry self add ${plugins}`). This env var is populated from `inputs.plugins` (via the `env:` block in action.yml). An attacker-controlled plugin list containing shell metacharacters (`;`, `|`, `&`, `$(...)`) would be interpreted by the shell, enabling arbitrary command injection.
-
-Offending lines:
-- Line 41: `plugins="$(echo $POETRY_PLUGINS | tr -s ' ')"`
-- Line 44: `poetry self add ${plugins} || exit 1`
+The `uses:` reference in tag_release.yml uses a mutable version tag instead of a pinned 40-character SHA commit: `actions/checkout@v4` (line 12). This is vulnerable to supply-chain attacks if the upstream tag is moved.
 
 Locations:
 
-- `main.sh:41`
-- `main.sh:44`
+- `.github/workflows/tag_release.yml:12`
+
+### unpinned-uses (severity: high)
+
+Multiple `uses:` references in test.yml use mutable version tags instead of pinned 40-character SHA commits: `actions/checkout@v4` (lines 26, 44, 63, 72, 82, 107), `actions/setup-python@v5` (lines 27, 45), `snok/install-poetry@v1` (line 128), `snok/install-poetry@v1.2` (line 129), `snok/install-poetry@v1.3` (line 130). These are vulnerable to supply-chain attacks if the upstream tags are moved.
+
+Locations:
+
+- `.github/workflows/test.yml:26`
+- `.github/workflows/test.yml:27`
+- `.github/workflows/test.yml:44`
+- `.github/workflows/test.yml:45`
+- `.github/workflows/test.yml:63`
+- `.github/workflows/test.yml:72`
+- `.github/workflows/test.yml:82`
+- `.github/workflows/test.yml:107`
+- `.github/workflows/test.yml:128`
+- `.github/workflows/test.yml:129`
+- `.github/workflows/test.yml:130`
+
+### permissions (severity: medium)
+
+missing-permissions: lint.yml has no top-level `permissions:` key and no job-level `permissions:` key on any job. Without explicit permissions, the workflow inherits the default repository permissions, which may be overly broad (e.g., write access to contents). Add `permissions: {}` at the top level and grant only the minimum required scopes.
+
+Locations:
+
+- `.github/workflows/lint.yml:1`
+
+### permissions (severity: medium)
+
+missing-permissions: tag_release.yml has no top-level `permissions:` key and no job-level `permissions:` key on any job. The workflow pushes tags and uses GITHUB_TOKEN, but does not restrict other permission scopes. Add a top-level `permissions:` block granting only `contents: write` (for tagging) and nothing else.
+
+Locations:
+
+- `.github/workflows/tag_release.yml:1`
+
+### permissions (severity: medium)
+
+missing-permissions: test.yml has no top-level `permissions:` key and no job-level `permissions:` key on any job. Without explicit permissions, the workflow inherits the default repository permissions. Add `permissions: {}` at the top level and grant only the minimum required scopes per job.
+
+Locations:
+
+- `.github/workflows/test.yml:1`
+
+### script-injection (severity: high)
+
+Rule (a) violation: The `run:` block in the `test-latest-version-when-unspecified` job directly interpolates `${{ needs.check-latest.outputs.latest-poetry-version }}` into shell commands. This value originates from a `jq` parse of an external HTTP response (PyPI JSON) and is injected verbatim into the shell before execution. A malicious or unexpected value in the PyPI response could inject arbitrary shell commands. The offending lines are:
+  `assert_in "." "${{ needs.check-latest.outputs.latest-poetry-version }}"`
+  `assert_in "${{ needs.check-latest.outputs.latest-poetry-version }}" "$(poetry --version)"`
+Fix: store the value in an env var and reference it as `"$ENV_VAR"` instead.
+
+Locations:
+
+- `.github/workflows/test.yml:115`
+- `.github/workflows/test.yml:116`
+
+### github-env-injection (severity: high)
+
+The `check-latest` job's `run:` block writes the output of `jq` (parsing an external HTTP response from PyPI) directly to `$GITHUB_OUTPUT` without sanitization (`printf '%s' ... | tr -d '\n\r'`). The raw `jq` output could contain newlines that allow injection of additional key=value pairs into the output file, which are then consumed by downstream jobs. The offending write is:
+  `| jq -r '"version=" + .info.version' >> $GITHUB_OUTPUT`
+Fix: capture the value, sanitize with `tr -d '\n\r'`, then write to `$GITHUB_OUTPUT`.
+
+Locations:
+
+- `.github/workflows/test.yml:108`
 
 ## Iteration Notes
 
 ### Iteration 1
 
+**Fixes applied:** unpinned-uses, permissions, script-injection, github-env-injection
+
+**Notes:**
+
+Fixed all 8 findings across 3 workflow files:
+
+**lint.yml**: Added `permissions: {}` at top level. Pinned actions/checkout@v4→SHA, actions/setup-python@v5→SHA, actions/cache@v4→SHA, mfinelli/setup-shfmt@v3→SHA.
+
+**tag_release.yml**: Added `permissions: contents: write` (minimum needed for git tagging/pushing). Pinned actions/checkout@v4→SHA.
+
+**test.yml**: Added `permissions: {}` at top level. Pinned all 11 unpinned action references (actions/checkout@v4, actions/setup-python@v5, snok/install-poetry@v1/v1.2/v1.3) to full 40-char SHAs with tag comments. Fixed script-injection by moving `${{ needs.check-latest.outputs.latest-poetry-version }}` into an `env:` block. Fixed github-env-injection by capturing jq output, sanitizing with `tr -d '\n\r'`, then writing to `$GITHUB_OUTPUT`.
+
+### Iteration 2
+
+**Fixes applied:** script-injection, github-env-injection
+
+**Notes:**
+
+Fixed all three findings in hardened/action/main.sh:
+
+1. script-injection (INSTALLATION_ARGUMENTS): Replaced unquoted `$INSTALLATION_ARGUMENTS` expansion with a quote-aware xargs-based tokenization into a bash array (`install_args`), guarded by `if [ -n "$INSTALLATION_ARGUMENTS" ]`. Expanded as `"${install_args[@]}"` in both the 'latest' and versioned installation branches.
+
+2. script-injection (POETRY_PLUGINS): Replaced `echo $POETRY_PLUGINS | tr -s ' '` and unquoted `${plugins}` with a quote-aware xargs-based tokenization into a bash array (`plugins`), guarded by `if [ -n "$POETRY_PLUGINS" ]`. Expanded as `"${plugins[@]}"` in the `poetry self add` call.
+
+3. github-env-injection (INSTALL_PATH): Added `safe_install_path="$(printf '%s' "$INSTALL_PATH" | tr -d '\n\r')"` before writing to `$GITHUB_PATH`, and used `${safe_install_path}/bin` in the echo to prevent newline injection from a caller-controlled `POETRY_HOME` environment variable.
+
+### Iteration 3
+
 **Fixes applied:** script-injection
 
 **Notes:**
 
-Fixed two script-injection vulnerabilities in main.sh:
-
-1. INSTALLATION_ARGUMENTS (lines 28 & 31): Replaced unquoted `$INSTALLATION_ARGUMENTS` expansion with a bash array. Used `read -ra installation_args <<< "$INSTALLATION_ARGUMENTS"` to safely split arguments, then `"${installation_args[@]}"` for safe expansion. Removed the `# shellcheck disable=SC2086` comments that were suppressing the warning.
-
-2. POETRY_PLUGINS (lines 41 & 44): Replaced unquoted `$POETRY_PLUGINS` and `${plugins}` expansions with a bash array. Used `printf '%s' "$POETRY_PLUGINS"` (quoted) to normalize whitespace/newlines safely, then `read -ra plugins <<< "$normalized_plugins"` to split into an array, then `"${plugins[@]}"` for safe expansion in the `poetry self add` call.
-
-Both fixes prevent word-splitting and glob expansion on attacker-controlled values while preserving the original functionality of passing multiple space-separated arguments.
-
-### Iteration 2
-
-**Fixes applied:** github-env-injection
-
-**Notes:**
-
-Fixed github-env-injection in actions/hardened/snok--install-poetry/v1.4.1/main.sh. The INSTALL_PATH variable (derived from the untrusted POETRY_HOME environment variable) was being written directly to $GITHUB_PATH without sanitization. Added a sanitization step using `safe=$(printf '%s' "$INSTALL_PATH/bin" | tr -d '\n\r')` before writing to $GITHUB_PATH, preventing newline injection attacks that could add arbitrary entries to the runner's PATH.
+Fixed unquoted shell variable expansions in .github/workflows/tag_release.yml lines 20-21. Changed `git tag $major_tag` and `git tag $minor_tag` to `git tag "$major_tag"` and `git tag "$minor_tag"` respectively. Both variables are derived from GITHUB_REF (a workflow-controllable env var) via a Python script, so quoting them prevents shell metacharacter injection.
 

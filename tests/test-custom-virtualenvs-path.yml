@@ -1,0 +1,34 @@
+name: Test Poetry with custom virtualenvs path
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: install
+        name: Install Poetry with custom virtualenvs path
+        uses: .
+        with:
+          version: latest
+          virtualenvs-path: "~/my-custom-venvs"
+
+      - name: Assert poetry is on PATH
+        run: |
+          if ! command -v poetry &>/dev/null; then
+            echo "FAIL: poetry not found on PATH"
+            exit 1
+          fi
+          echo "PASS: poetry found at $(command -v poetry)"
+
+      - name: Assert virtualenvs.path is set to custom path
+        run: |
+          CONFIG="$(poetry config virtualenvs.path)"
+          echo "virtualenvs.path: $CONFIG"
+          EXPECTED="$HOME/my-custom-venvs"
+          if [ "$CONFIG" != "$EXPECTED" ]; then
+            echo "FAIL: expected virtualenvs.path='$EXPECTED', got '$CONFIG'"
+            exit 1
+          fi
+          echo "PASS: virtualenvs.path correctly set to $CONFIG"
