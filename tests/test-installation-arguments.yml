@@ -1,4 +1,4 @@
-name: Test Poetry installation with installation-arguments
+name: Test installation-arguments input
 on:
   workflow_dispatch:
 jobs:
@@ -10,26 +10,14 @@ jobs:
         uses: .
         with:
           version: latest
-          installation-arguments: "--force"
-          virtualenvs-create: "true"
-          virtualenvs-in-project: "true"
-          installer-parallel: "false"
+          installation-arguments: --force
       - name: Assert Poetry is installed
         run: |
-          echo "Checking poetry is available after install with --force..."
+          echo "Checking Poetry installation with --force argument..."
           if ! command -v poetry &> /dev/null; then
             echo "FAIL: poetry command not found"
             exit 1
           fi
-          echo "PASS: poetry is installed"
-          poetry --version
-      - name: Assert virtualenvs-in-project config
-        run: |
-          echo "Checking virtualenvs.in-project config..."
-          CONFIG=$(poetry config virtualenvs.in-project)
-          echo "actual: $CONFIG"
-          if [ "$CONFIG" != "true" ]; then
-            echo "FAIL: expected virtualenvs.in-project=true, got: $CONFIG"
-            exit 1
-          fi
-          echo "PASS: virtualenvs.in-project is true"
+          POETRY_VERSION=$(poetry --version)
+          echo "actual: $POETRY_VERSION"
+          echo "PASS: Poetry installed successfully with installation-arguments=--force"

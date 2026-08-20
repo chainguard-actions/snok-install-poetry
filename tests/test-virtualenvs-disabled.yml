@@ -1,0 +1,31 @@
+name: Test virtualenvs-create disabled configuration
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: install-poetry
+        uses: .
+        with:
+          version: latest
+          virtualenvs-create: "false"
+      - name: Assert Poetry is installed
+        run: |
+          echo "Checking poetry is available..."
+          if ! command -v poetry &>/dev/null; then
+            echo "FAIL: poetry command not found on PATH"
+            exit 1
+          fi
+          echo "PASS: Poetry is installed"
+      - name: Assert virtualenvs.create is set to false
+        run: |
+          CONFIG="$(poetry config --list)"
+          echo "Poetry config:"
+          echo "$CONFIG"
+          if ! echo "$CONFIG" | grep -q "virtualenvs.create = false"; then
+            echo "FAIL: virtualenvs.create is not set to false"
+            exit 1
+          fi
+          echo "PASS: virtualenvs.create is correctly set to false"

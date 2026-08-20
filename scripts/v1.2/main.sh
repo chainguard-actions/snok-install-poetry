@@ -17,7 +17,7 @@ else
 fi
 
 # Install Poetry
-POETRY_HOME=$path python3 $installation_script --yes --version=$version
+POETRY_HOME=$path python3 "$installation_script" --yes --version="$version"
 
 # Add to path
 echo "$path/bin" >>$GITHUB_PATH

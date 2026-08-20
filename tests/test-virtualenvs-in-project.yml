@@ -1,0 +1,37 @@
+name: Test virtualenvs-in-project configuration
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: install-poetry
+        uses: .
+        with:
+          version: latest
+          virtualenvs-in-project: "true"
+          virtualenvs-create: "true"
+      - name: Assert virtualenvs.in-project is configured
+        run: |
+          echo "Checking poetry config..."
+          if ! command -v poetry &>/dev/null; then
+            echo "FAIL: poetry command not found on PATH"
+            exit 1
+          fi
+          CONFIG="$(poetry config --list)"
+          echo "Poetry config:"
+          echo "$CONFIG"
+          if ! echo "$CONFIG" | grep -q "virtualenvs.in-project = true"; then
+            echo "FAIL: virtualenvs.in-project is not set to true"
+            exit 1
+          fi
+          echo "PASS: virtualenvs.in-project is correctly set to true"
+      - name: Assert virtualenvs.create is configured
+        run: |
+          CONFIG="$(poetry config --list)"
+          if ! echo "$CONFIG" | grep -q "virtualenvs.create = true"; then
+            echo "FAIL: virtualenvs.create is not set to true"
+            exit 1
+          fi
+          echo "PASS: virtualenvs.create is correctly set to true"

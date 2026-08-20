@@ -1,4 +1,4 @@
-name: Test basic Poetry installation
+name: Test basic usage - install latest Poetry
 on:
   workflow_dispatch:
 jobs:
@@ -6,16 +6,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - id: action
+      - id: install-poetry
         uses: .
         with:
           version: latest
-      - name: Assert Poetry is installed
+      - name: Assert Poetry is installed and on PATH
         run: |
           echo "Checking poetry is available..."
-          if ! command -v poetry &> /dev/null; then
-            echo "FAIL: poetry command not found"
+          if ! command -v poetry &>/dev/null; then
+            echo "FAIL: poetry command not found on PATH"
             exit 1
           fi
-          echo "PASS: poetry is installed"
-          poetry --version
+          POETRY_VERSION="$(poetry --version)"
+          echo "Poetry version: $POETRY_VERSION"
+          if [ -z "$POETRY_VERSION" ]; then
+            echo "FAIL: poetry --version returned empty output"
+            exit 1
+          fi
+          echo "PASS: Poetry is installed and accessible"
+      - name: Assert VENV env var is set
+        env:
+          VENV: ${{ env.VENV }}
+        run: |
+          echo "VENV: $VENV"
+          if [ -z "$VENV" ]; then
+            echo "FAIL: VENV environment variable was not set"
+            exit 1
+          fi
+          echo "PASS: VENV is set to '$VENV'"
