@@ -22,22 +22,18 @@ fi
 echo -e "\n${YELLOW}Setting Poetry installation path as $INSTALL_PATH${RESET}\n"
 echo -e "${YELLOW}Installing Poetry 👷${RESET}\n"
 
-# Tokenize INSTALLATION_ARGUMENTS into an array (quote-aware, handles flags safely)
-install_args=()
-if [ -n "$INSTALLATION_ARGUMENTS" ]; then
-  while IFS= read -r -d '' t; do install_args+=("$t"); done \
-    < <(printf '%s' "$INSTALLATION_ARGUMENTS" | xargs printf '%s\0')
-fi
-
 if [ "$VERSION" == "latest" ]; then
-  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes "${install_args[@]}"
+  # Note: If we quote installation arguments, the call below fails
+  # shellcheck disable=SC2086
+  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes $INSTALLATION_ARGUMENTS
 else
-  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes --version="$VERSION" "${install_args[@]}"
+  # shellcheck disable=SC2086
+  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes --version="$VERSION" $INSTALLATION_ARGUMENTS
 fi
 
-# Sanitize INSTALL_PATH before writing to GITHUB_PATH to prevent newline injection
-safe_install_path="$(printf '%s' "$INSTALL_PATH" | tr -d '\n\r')"
-echo "${safe_install_path}/bin" >>"$GITHUB_PATH"
+# Sanitize before writing to GITHUB_PATH to prevent newline injection
+safe_install_bin="$(printf '%s' "$INSTALL_PATH/bin" | tr -d '\n\r')"
+echo "$safe_install_bin" >>"$GITHUB_PATH"
 export PATH="$INSTALL_PATH/bin:$PATH"
 
 # Expand any "~" in VIRTUALENVS_PATH
@@ -49,15 +45,10 @@ poetry config virtualenvs.path "$VIRTUALENVS_PATH"
 
 # Parse plugin array from string, handle whitespace or newline delimiters
 if ! [ -z "$POETRY_PLUGINS" ]; then
-  # Tokenize POETRY_PLUGINS into an array (quote-aware, handles plugin names safely)
-  plugins=()
-  if [ -n "$POETRY_PLUGINS" ]; then
-    while IFS= read -r -d '' t; do plugins+=("$t"); done \
-      < <(printf '%s' "$POETRY_PLUGINS" | xargs printf '%s\0')
-  fi
-  if [ "${#plugins[@]}" -gt 0 ]; then
-    echo "Installing plugins: ${plugins[*]}"
-    poetry self add "${plugins[@]}" || exit 1
+  plugins="$(echo $POETRY_PLUGINS | tr -s ' ')" # Replace linesep to space
+  if [[ "$plugins" && "$plugins" != " " ]]; then
+    echo "Installing plugins: ${plugins}"
+    poetry self add ${plugins} || exit 1
   fi
 fi
 
