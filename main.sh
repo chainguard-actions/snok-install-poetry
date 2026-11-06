@@ -24,8 +24,7 @@ echo -e "${YELLOW}Installing Poetry 👷${RESET}\n"
 
 install_args=()
 if [ -n "$INSTALLATION_ARGUMENTS" ]; then
-  while IFS= read -r -d '' t; do install_args+=("$t"); done \
-    < <(printf '%s' "$INSTALLATION_ARGUMENTS" | xargs printf '%s\0')
+  read -r -d '' -a install_args <<<"$INSTALLATION_ARGUMENTS" || true
 fi
 
 if [ "$VERSION" == "latest" ]; then
@@ -46,13 +45,11 @@ poetry config virtualenvs.in-project "$VIRTUALENVS_IN_PROJECT"
 poetry config virtualenvs.path "$VIRTUALENVS_PATH"
 
 # Parse plugin array from string, handle whitespace or newline delimiters
-if [ -n "$POETRY_PLUGINS" ]; then
-  plugins=()
-  while IFS= read -r -d '' t; do plugins+=("$t"); done \
-    < <(printf '%s' "$POETRY_PLUGINS" | xargs printf '%s\0')
-  if [ "${#plugins[@]}" -gt 0 ]; then
-    echo "Installing plugins: ${plugins[*]}"
-    poetry self add "${plugins[@]}" || exit 1
+if ! [ -z "$POETRY_PLUGINS" ]; then
+  plugins="$(echo $POETRY_PLUGINS | tr -s ' ')" # Replace linesep to space
+  if [[ "$plugins" && "$plugins" != " " ]]; then
+    echo "Installing plugins: ${plugins}"
+    poetry self add ${plugins} || exit 1
   fi
 fi
 
