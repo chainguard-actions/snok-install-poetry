@@ -24,16 +24,20 @@ download_script "$INSTALLER_URL" >"$INSTALLATION_SCRIPT"
 echo -e "\n${YELLOW}Setting Poetry installation path as $INSTALL_PATH${RESET}\n"
 echo -e "${YELLOW}Installing Poetry 👷${RESET}\n"
 
-read -ra installation_args <<< "$INSTALLATION_ARGUMENTS"
-
-if [ "$VERSION" == "latest" ]; then
-  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes "${installation_args[@]}"
-else
-  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes --version="$VERSION" "${installation_args[@]}"
+# Split installation arguments on whitespace (as the upstream unquoted expansion did)
+installation_args=()
+if [ -n "$INSTALLATION_ARGUMENTS" ]; then
+  read -r -d '' -a installation_args <<<"$INSTALLATION_ARGUMENTS" || true
 fi
 
-safe_install_path="$(printf '%s' "$INSTALL_PATH" | tr -d '\n\r')"
-echo "${safe_install_path}/bin" >>"$GITHUB_PATH"
+if [ "$VERSION" == "latest" ]; then
+  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes ${installation_args[@]+"${installation_args[@]}"}
+else
+  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes --version="$VERSION" ${installation_args[@]+"${installation_args[@]}"}
+fi
+
+safe_install_bin="$(printf '%s' "$INSTALL_PATH/bin" | tr -d '\n\r')"
+echo "$safe_install_bin" >>"$GITHUB_PATH"
 export PATH="$INSTALL_PATH/bin:$PATH"
 
 # Expand any "~" in VIRTUALENVS_PATH
@@ -48,8 +52,9 @@ if [ -n "$POETRY_PLUGINS" ]; then
   plugins="$(echo "$POETRY_PLUGINS" | tr -s ' ')" # Replace linesep to space
   if [[ "$plugins" && "$plugins" != " " ]]; then
     echo "Installing plugins: ${plugins}"
-    read -ra plugin_args <<< "$plugins"
-    poetry self add "${plugin_args[@]}" || exit 1
+    plugin_args=()
+    read -r -d '' -a plugin_args <<<"$plugins" || true
+    poetry self add ${plugin_args[@]+"${plugin_args[@]}"} || exit 1
   fi
 fi
 

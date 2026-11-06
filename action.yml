@@ -52,7 +52,7 @@ runs:
           -d "{\"repository\":\"${GITHUB_REPOSITORY}\",\"action\":\"${GITHUB_ACTION_REPOSITORY}\"}" \
           "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
     - name: Install and configure Poetry
-      run: $GITHUB_ACTION_PATH/main.sh
+      run: '"$GITHUB_ACTION_PATH/main.sh"'
       shell: bash
       env:
         VERSION: ${{ inputs.version }}

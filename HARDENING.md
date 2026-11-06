@@ -4,52 +4,28 @@
 
 > This file was generated automatically by the hardening agent.
 
-**Policy SHA:** `d636be7e43ef829af6e853da6b3c7566db9f72fe`
+**Policy SHA:** `374911c4be584df24e6da57af2d990570ef0f859`
 
 **Test Policy SHA:** `843adf9e4b8f85d0c08b27b9d0b09dd094b54702`
 
 **Harden Agent Version:** `2`
 
-Action **snok--install-poetry/v1.4.2** was hardened automatically. 5 finding(s) were identified and resolved across 1 iteration(s).
+Action **snok--install-poetry/v1.4.2** was hardened automatically. 4 finding(s) were identified and resolved across 1 iteration(s).
 
 ## Findings Fixed
 
-### unpinned-uses (severity: high)
+### github-env-injection (severity: high)
 
-All `uses:` references in the workflow files are pinned to mutable version tags rather than immutable 40-character SHA commit hashes, making the action vulnerable to supply-chain attacks if any upstream action is compromised or a tag is moved.
-
-Failing references:
-- lint.yml: `actions/checkout@v6`, `actions/setup-python@v6`, `actions/cache@v5`, `mfinelli/setup-shfmt@v4`
-- tag_release.yml: `actions/checkout@v6`
-- test.yml: `actions/checkout@v6`, `actions/setup-python@v6` (multiple), `snok/install-poetry@v1`, `snok/install-poetry@v1.2`, `snok/install-poetry@v1.3`
+main.sh is run by the composite step in action.yml (`run: $GITHUB_ACTION_PATH/main.sh`). It sets INSTALL_PATH="${POETRY_HOME:-$HOME/.local}". POETRY_HOME is not set by the action; it comes from the calling workflow's environment. Line 36 then writes `echo "$INSTALL_PATH/bin" >>"$GITHUB_PATH"` without first running `printf '%s' ... | tr -d '\n\r'`. If POETRY_HOME contains a newline, extra lines are written to $GITHUB_PATH, and each one becomes an attacker-chosen PATH entry. Fix: `safe=$(printf '%s' "$INSTALL_PATH/bin" | tr -d '\n\r'); echo "$safe" >> "$GITHUB_PATH"`.
 
 Locations:
 
-- `.github/workflows/lint.yml:8`
-- `.github/workflows/lint.yml:9`
-- `.github/workflows/lint.yml:13`
-- `.github/workflows/lint.yml:16`
-- `.github/workflows/tag_release.yml:11`
-- `.github/workflows/test.yml:20`
-- `.github/workflows/test.yml:22`
-- `.github/workflows/test.yml:24`
-- `.github/workflows/test.yml:116`
-- `.github/workflows/test.yml:117`
-- `.github/workflows/test.yml:118`
-
-### permissions (severity: medium)
-
-None of the workflow files define a top-level `permissions:` key, and no individual jobs define job-level `permissions:` keys. Without explicit permissions, workflows run with the default (potentially broad) token permissions, violating the principle of least privilege.
-
-Locations:
-
-- `.github/workflows/lint.yml:1`
-- `.github/workflows/tag_release.yml:1`
-- `.github/workflows/test.yml:1`
+- `main.sh:36`
+- `action.yml:38`
 
 ### script-injection (severity: high)
 
-Sub-rule (b): Unquoted shell variable expansions of untrusted input-derived data in main.sh.
+Carried forward from this version's previous harden, which fixed it; fix it again unless the code no longer has the problem. Sub-rule (b): Unquoted shell variable expansions of untrusted input-derived data in main.sh.
 
 1. `$INSTALLATION_ARGUMENTS` (sourced from `inputs.installation-arguments` via the `INSTALLATION_ARGUMENTS` env var set in action.yml) is expanded unquoted in two `python3` invocations:
    - Line 27: `python3 "$INSTALLATION_SCRIPT" --yes $INSTALLATION_ARGUMENTS`
@@ -66,50 +42,96 @@ Locations:
 - `main.sh:29`
 - `main.sh:46`
 
-### script-injection (severity: high)
+### prior-fix (severity: high)
 
-Sub-rule (a): Direct `${{ }}` expression interpolation inside a `run:` shell command block in test.yml.
-
-The `test-latest-version-when-unspecified` job's `run:` block directly interpolates `${{ needs.check-latest.outputs.latest-poetry-version }}` — a step output value from a prior job — into shell commands:
+Carried forward from this version's previous harden, which fixed it; fix it again unless the code no longer has the problem. The previous harden changed action.yml without recording a finding for it, and this analysis reported nothing there. Re-apply its security changes unless the code no longer needs them. The previous patch:
+```diff
+diff --git a/action.yml b/action.yml
+index 80ad15c..1f4b26a 100644
+--- a/action.yml
++++ b/action.yml
+@@ -34,14 +34,31 @@ inputs:
+ runs:
+   using: "composite"
+   steps:
+     - name: Install and configure Poetry
+       run: $GITHUB_ACTION_PATH/main.sh
+       shell: bash
+       env:
+-        VERSION:                ${{ inputs.version }}
+-        VIRTUALENVS_CREATE:     ${{ inputs.virtualenvs-create }}
++        VERSION: ${{ inputs.version }}
++        VIRTUALENVS_CREATE: ${{ inputs.virtualenvs-create }}
+         VIRTUALENVS_IN_PROJECT: ${{ inputs.virtualenvs-in-project }}
+-        VIRTUALENVS_PATH:       ${{ inputs.virtualenvs-path }}
+-        INSTALLER_PARALLEL:     ${{ inputs.installer-parallel }}
++        VIRTUALENVS_PATH: ${{ inputs.virtualenvs-path }}
++        INSTALLER_PARALLEL: ${{ inputs.installer-parallel }}
+         INSTALLATION_ARGUMENTS: ${{ inputs.installation-arguments }}
+-        POETRY_PLUGINS:         ${{ inputs.plugins }}
++        POETRY_PLUGINS: ${{ inputs.plugins }}
 
 ```
-assert_in "." "${{ needs.check-latest.outputs.latest-poetry-version }}"
-assert_in "${{ needs.check-latest.outputs.latest-poetry-version }}" "$(poetry --version)"
-```
-
-The step output is fetched from PyPI via `jq` and written to `$GITHUB_OUTPUT` without sanitization. If the PyPI response were tampered with or the value contained shell metacharacters, it would be executed in the runner shell. The value should be passed via an `env:` variable and double-quoted.
 
 Locations:
 
-- `.github/workflows/test.yml:107`
-- `.github/workflows/test.yml:108`
+- `action.yml`
 
-### github-env-injection (severity: high)
+### prior-fix (severity: high)
 
-In main.sh (line 32), the value `$INSTALL_PATH` is written to `$GITHUB_PATH` without sanitization:
+Carried forward from this version's previous harden, which fixed it; fix it again unless the code no longer has the problem. The previous harden changed main.sh without recording a finding for it, and this analysis reported nothing there. Re-apply its security changes unless the code no longer needs them. The previous patch:
+```diff
+diff --git a/main.sh b/main.sh
+index 59ae5a2..3c04c46 100755
+--- a/main.sh
++++ b/main.sh
+@@ -24,16 +24,16 @@ download_script "$INSTALLER_URL" >"$INSTALLATION_SCRIPT"
+ echo -e "\n${YELLOW}Setting Poetry installation path as $INSTALL_PATH${RESET}\n"
+ echo -e "${YELLOW}Installing Poetry 👷${RESET}\n"
+ 
++read -ra installation_args <<< "$INSTALLATION_ARGUMENTS"
++
+ if [ "$VERSION" == "latest" ]; then
+-  # Note: If we quote installation arguments, the call below fails
+-  # shellcheck disable=SC2086
+-  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes $INSTALLATION_ARGUMENTS
++  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes "${installation_args[@]}"
+ else
+-  # shellcheck disable=SC2086
+-  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes --version="$VERSION" $INSTALLATION_ARGUMENTS
++  POETRY_HOME=$INSTALL_PATH python3 "$INSTALLATION_SCRIPT" --yes --version="$VERSION" "${installation_args[@]}"
+ fi
+ 
+-echo "$INSTALL_PATH/bin" >>"$GITHUB_PATH"
++safe_install_path="$(printf '%s' "$INSTALL_PATH" | tr -d '\n\r')"
++echo "${safe_install_path}/bin" >>"$GITHUB_PATH"
+ export PATH="$INSTALL_PATH/bin:$PATH"
+ 
+ # Expand any "~" in VIRTUALENVS_PATH
+@@ -48,7 +48,8 @@ if [ -n "$POETRY_PLUGINS" ]; then
+   plugins="$(echo "$POETRY_PLUGINS" | tr -s ' ')" # Replace linesep to space
+   if [[ "$plugins" && "$plugins" != " " ]]; then
+     echo "Installing plugins: ${plugins}"
+-    poetry self add ${plugins} || exit 1
++    read -ra plugin_args <<< "$plugins"
++    poetry self add "${plugin_args[@]}" || exit 1
+   fi
+ fi
+ 
 
-```bash
-echo "$INSTALL_PATH/bin" >> "$GITHUB_PATH"
 ```
-
-`$INSTALL_PATH` is set from `${POETRY_HOME:-$HOME/.local}`. `POETRY_HOME` is an inherited process environment variable that can be set arbitrarily by the calling workflow. Per the check's scope, any process env var read inside a composite action's `run:` block that was not computed in the same script is treated as untrusted. A newline-containing value in `POETRY_HOME` could inject additional entries into `$GITHUB_PATH`, potentially hijacking the `PATH` for subsequent steps. The required sanitization (`printf '%s' "$INSTALL_PATH" | tr -d '\n\r'`) is absent.
 
 Locations:
 
-- `main.sh:32`
+- `main.sh`
 
 ## Iteration Notes
 
 ### Iteration 1
 
-**Fixes applied:** unpinned-uses, permissions, script-injection, github-env-injection
+**Fixes applied:** github-env-injection, script-injection, prior-fix
 
 **Notes:**
 
-Fixed all 5 findings:
-1. unpinned-uses: Pinned all action references in lint.yml, tag_release.yml, and test.yml to full 40-char SHAs (actions/checkout@df4cb1c, actions/setup-python@ece7cb0, actions/cache@caa2961, mfinelli/setup-shfmt@a25fda4, snok/install-poetry@a783c32/44d50c1/93ada01).
-2. permissions: Added top-level `permissions: {}` to all 3 workflow files plus job-level minimal permissions (contents: read for most jobs, contents: write for tag-v1 job).
-3. script-injection (main.sh lines 27,29,46): Used `read -ra` to parse $INSTALLATION_ARGUMENTS and $plugins into arrays, then expanded with `"${array[@]}"` to prevent shell metacharacter injection while preserving word-splitting behavior.
-4. script-injection (test.yml lines 107-108): Moved `${{ needs.check-latest.outputs.latest-poetry-version }}` into an `env:` block as LATEST_POETRY_VERSION and referenced it as `"$LATEST_POETRY_VERSION"` in the shell script.
-5. github-env-injection (main.sh line 32): Sanitized $INSTALL_PATH with `printf '%s' "$INSTALL_PATH" | tr -d '\n\r'` before writing to $GITHUB_PATH.
+main.sh: before the INSTALL_PATH/bin value is written to $GITHUB_PATH, newlines and carriage returns are now stripped with tr -d '\n\r'. INSTALLATION_ARGUMENTS and the plugin list were expanded unquoted before. Each is now split into a bash array with `read -r -d '' -a ... || true`, so values on separate lines are still separate arguments, and the array is passed double-quoted. INSTALLATION_ARGUMENTS is only split when it is non-empty, and the arrays are expanded with ${arr[@]+...} so an empty list passes no arguments at all. Upstream's unquoted expansion also split on whitespace, so arguments reach the tools the same way, but globs in the values are no longer expanded. action.yml: put back the previous harden's env: whitespace cleanup and quoted the script path as "$GITHUB_ACTION_PATH/main.sh". The step uses shell: bash, so the quoting is safe. Nothing was run or tested.
 
